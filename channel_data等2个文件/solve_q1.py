@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 
 NS = {"a": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
-XLSX_PATH = "/Users/liz/Desktop/channel_data等2个文件/channel_data.xlsx"
+XLSX_PATH = "/Users/liz/Desktop/5G_Optimization/channel_data等2个文件/channel_data.xlsx"
 P_DBM = 30.0
 W_RB = 360e3
 NF_DB = 7.0
