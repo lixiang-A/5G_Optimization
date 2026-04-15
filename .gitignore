@@ -7,3 +7,4 @@ venv/
 .Rhistory
 .cache/
 outputs/
+outputs-1/
