@@ -1,0 +1,40 @@
+\begin{thebibliography}{1}
+
+\bibitem{su2019survey}
+Yang Su et~al.
+\newblock Resource allocation for network slicing in 5g telecommunication
+  networks: A survey of principles and models.
+\newblock {\em IEEE Network}, 33(6):172--179, 2019.
+
+\bibitem{sanchez2022survey}
+Jos{\'e} S{\'a}nchez et~al.
+\newblock Deep reinforcement learning for resource management on network
+  slicing: A survey.
+\newblock {\em Electronics}, 11(3):303, 2022.
+
+\bibitem{chen2022two_tier}
+Xiaolong Chen et~al.
+\newblock Two tier slicing resource allocation algorithm based on deep
+  reinforcement learning and joint bidding in wireless access networks.
+\newblock {\em Sensors}, 22(9):3495, 2022.
+
+\bibitem{jiang2024rlsa}
+Shurui Jiang, Jun Zheng, Feng Yan, and Shuyuan Zhao.
+\newblock Reinforcement-learning-based network slicing and resource allocation
+  for multi-access edge computing networks.
+\newblock {\em IEEE Transactions on Cognitive Communications and Networking},
+  10(3):1132--1143, 2024.
+
+\bibitem{kim2025power}
+J.~Kim et~al.
+\newblock Distributed multi-agent deep reinforcement learning based transmit
+  power control in cellular networks with local csi.
+\newblock {\em Sensors}, 25(6):1763, 2025.
+
+\bibitem{kim2025energy}
+J.~Kim and J.~So.
+\newblock Energy-efficient deep reinforcement learning assisted resource
+  allocation for 5g-ran slicing.
+\newblock {\em Sensors}, 25(3):933, 2025.
+
+\end{thebibliography}

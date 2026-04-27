@@ -1,9 +1,10 @@
-\documentclass[UTF8,a4paper,12pt]{ctexart}
+\documentclass[UTF8,a4paper,12pt,fontset=fandol]{ctexart}
 
 \usepackage[left=2.5cm,right=2.5cm,top=2.6cm,bottom=2.6cm]{geometry}
 \usepackage{amsmath,amssymb,amsthm,bm}
 \usepackage{booktabs,multirow,array}
 \usepackage{graphicx}
+\graphicspath{{figures/}}
 \usepackage{caption}
 \usepackage{enumitem}
 \usepackage{hyperref}
@@ -51,6 +52,15 @@
   \item 设计了一条从精确枚举、有限时域滚动优化到分层强化学习的递进式求解链，用静态可解子问题保证模型闭合，用单站动态基线保证方法可解释，再用分层策略处理完整的多站耦合场景。
   \item 在已发布benchmark场景数据上验证了该框架的有效性：单站动态场景下滚动优化深度存在明确最优折中，多站场景下分层PPO在多随机种子下稳定优于轻量级基线，并对URLLC形成了稳定的硬约束保障。
 \end{enumerate}
+
+为避免将前三问写成彼此割裂的工程结果，本文后续始终按照图\ref{fig:framework}所示的证据链展开：问题1承担模型校准作用，问题2验证动态队列下的时间前瞻价值，问题3再进入完整的多基站干扰耦合与功率控制场景。换言之，三组实验共同服务于同一个研究命题，即双时间尺度切片预算与功率控制如何在异构SLA约束下提升长期平均服务质量。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.98\linewidth]{framework.png}
+  \caption{前三问在本文中的统一证据链。图中Q1、Q2和Q3分别对应静态校准、动态基线与多站耦合控制三个复杂度层级。}
+  \label{fig:framework}
+\end{figure}
 
 \section{相关工作}
 
@@ -246,7 +256,7 @@
 
 \subsection{实验数据与评价口径}
 
-实验数据均来自项目仓库中的已发布benchmark场景实例。其中，静态单站场景采用\texttt{channel\_data等2个文件/channel\_data.xlsx}；动态单站场景采用\texttt{channel\_data等2个文件(1)/channel\_data.xlsx}；多站场景采用\texttt{BS2等5个文件/BS1.xlsx}、\texttt{BS2等5个文件/BS2.xlsx}、\texttt{BS2等5个文件/BS3.xlsx}和\texttt{BS2等5个文件/taskflow.xlsx}。
+实验部分与求解框架保持同构组织，即先用静态单站结果检查模型闭合性，再用动态单站结果分析时间前瞻带来的收益与代价，最后用多站结果检验分层切片--功率协同控制的有效性。实验数据均来自项目仓库中的已发布benchmark场景实例。其中，静态单站场景采用\texttt{channel\_data等2个文件/channel\_data.xlsx}；动态单站场景采用\texttt{channel\_data等2个文件(1)/channel\_data.xlsx}；多站场景采用\texttt{BS2等5个文件/BS1.xlsx}、\texttt{BS2等5个文件/BS2.xlsx}、\texttt{BS2等5个文件/BS3.xlsx}和\texttt{BS2等5个文件/taskflow.xlsx}。
 
 评价指标主要包括：
 \begin{itemize}[leftmargin=2em]
@@ -264,6 +274,15 @@
   (30,10,10),\qquad (20,20,10),\qquad (20,10,20).
 \end{equation*}
 它们对应相同的综合目标值$0.980771$，且三类切片效用分别为$Q_u=0.993482$、$Q_e=0.948832$、$Q_m=1.000000$。这一结果说明，当前静态场景下系统资源尚未紧张到使最优解唯一，模型更适合作为效用校准与可行性验证使用，而不是全文的主要性能展示部分。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.72\linewidth]{q1_static_optima.png}
+  \caption{静态单站场景下三组并列最优RB划分。结果由\texttt{channel\_data等2个文件/solve\_q1.py}在\texttt{channel\_data等2个文件/channel\_data.xlsx}上枚举得到。}
+  \label{fig:q1_static_optima}
+\end{figure}
+
+图\ref{fig:q1_static_optima}进一步说明，静态校准层的结论并不是某一个单点配置偶然最优，而是在当前任务规模下存在多个等效资源划分。这一现象反过来验证了本文的递进式设计必要性：若只停留在问题1，无法充分体现动态队列和干扰耦合对资源管理策略的影响。
 
 \subsection{动态单站对照实验}
 
@@ -286,7 +305,23 @@
 
 可以看到，从$lookahead=1$提升到$lookahead=2$时，系统目标值显著上升，说明适度的时间前瞻确实能够改善动态资源配置效果；但进一步增加到$lookahead=3$后，目标值并未继续提升，计算代价却急剧增大。这表明更深层的滚动预测在当前问题规模和数据下已经出现边际收益递减。
 
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.72\linewidth]{q2_lookahead_tradeoff.png}
+  \caption{动态单站场景中前瞻深度对目标值与运行时间的影响。目标值来自\texttt{outputs/q2\_mpc/lookahead*.json}，运行时间来自对应\texttt{lookahead*\_time.txt}文件。}
+  \label{fig:q2_lookahead_tradeoff}
+\end{figure}
+
 以$lookahead=2$为例，系统实现了：URLLC完成216、丢弃1、平均时延$2.4960\,\mathrm{ms}$；eMBB完成1931、丢弃25、平均时延$16.7218\,\mathrm{ms}$；mMTC完成7010、丢弃0、平均时延$15.7955\,\mathrm{ms}$。这说明滚动优化已经能够较好平衡三类切片的竞争关系，为多站强化学习层提供了一个可解释的强基线。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.76\linewidth]{q2_decision_sequence.png}
+  \caption{$lookahead=2$时10个决策窗口内的RB预算序列。图中每根柱的总高度为50个RB，显示滚动优化会随队列压力在eMBB和mMTC之间重新分配资源。}
+  \label{fig:q2_decision_sequence}
+\end{figure}
+
+结合图\ref{fig:q2_lookahead_tradeoff}与图\ref{fig:q2_decision_sequence}可以看出，问题2的关键结论不只是``某个动作序列最优''，而是动态前瞻机制能够根据队列积压状态调整切片预算；同时，过深前瞻会显著放大枚举搜索代价。因此该层在全文中承担的是动态基线与复杂度边界的作用。
 
 \subsection{多站干扰耦合实验}
 
@@ -312,9 +347,25 @@
 
 从研究叙事上，这组结果至少说明两点。第一，分层结构相较于轻量级基线具有稳定而非偶然的性能提升；第二，三组随机种子之间的波动较小，说明当前方法的性能并不依赖某一次幸运训练结果，而已经具备一定可重复性。
 
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.90\linewidth]{q3_multiseed_summary.png}
+  \caption{多站干扰耦合场景中的多随机种子目标值对比与最佳模型完成率。结果来自\texttt{outputs/q3\_rl/short\_run\_metrics.json}和\texttt{outputs/q3\_sb3/q3\_combined\_eval*\_10k.json}。}
+  \label{fig:q3_multiseed_summary}
+\end{figure}
+
 以最佳的$seed=17$为例，联合评估结果显示：综合目标值为$0.4994806473699616$；URLLC完成559个任务、丢弃0个、平均时延$1.2795\,\mathrm{ms}$；eMBB完成5406个任务、丢弃587个、平均时延$99.9393\,\mathrm{ms}$；mMTC完成10527个任务、丢弃10556个、平均时延$398.5841\,\mathrm{ms}$；eMBB平均服务速率为$112.2346\,\mathrm{Mbps}$；平均发射功率为$0.1032\,\mathrm{W}$；平均干扰比为$0.3555$。
 
 这些结果支撑如下更严谨的结论：当前分层框架已经能够对URLLC形成稳定的硬约束保障，并在综合目标上取得相对于轻量级基线的稳健提升；但eMBB仍处于接近$100\,\mathrm{ms}$边界的紧约束区间，mMTC也仍然是最难服务的切片。换句话说，本文方法已经证明``整体框架有效''，但并不意味着所有业务都已经达到充分优化状态。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\linewidth]{q3_slice_seed17_convergence.png}
+  \caption{$seed=17$切片层PPO训练曲线。该图由\texttt{outputs/q3\_sb3/q3\_slice\_ppo\_seed17\_10k\_curves.png}同步至论文图目录，用于展示训练过程中的目标值提升趋势。}
+  \label{fig:q3_slice_convergence}
+\end{figure}
+
+图\ref{fig:q3_multiseed_summary}和图\ref{fig:q3_slice_convergence}分别从最终结果和训练过程两个角度支撑多站层结论：分层PPO相较轻量级层次基线具有稳定优势，且训练过程中官方目标值随训练推进整体上升。不过，最佳模型对mMTC的完成率仍不足，说明当前策略更偏向保障URLLC和eMBB时延边界，后续应通过灵敏度分析、奖励权重调节或更强的多智能体协同机制继续验证与改进。
 
 \subsection{参数灵敏度分析设计说明}
 
