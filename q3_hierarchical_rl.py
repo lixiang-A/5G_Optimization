@@ -150,6 +150,18 @@ SLICE_CONFIGS: Dict[str, SliceConfig] = {
 }
 
 
+def configure_slice_configs(alpha_u: float, beta_u: float, beta_e: float, beta_m: float) -> None:
+    """Apply benchmark-calibration constants without changing slice semantics."""
+    SLICE_CONFIGS.clear()
+    SLICE_CONFIGS.update(
+        {
+            "u": SliceConfig("URLLC", "U", 10, 10.0, 5, beta_u, alpha=alpha_u),
+            "e": SliceConfig("eMBB", "e", 5, 50.0, 100, beta_e),
+            "m": SliceConfig("mMTC", "m", 2, 1.0, 500, beta_m),
+        }
+    )
+
+
 def sigmoid(x: float) -> float:
     if x >= 0.0:
         z = math.exp(-x)
@@ -984,6 +996,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wu", type=float, default=1.0 / 3.0, help="URLLC weight.")
     parser.add_argument("--we", type=float, default=1.0 / 3.0, help="eMBB weight.")
     parser.add_argument("--wm", type=float, default=1.0 / 3.0, help="mMTC weight.")
+    parser.add_argument("--alpha-u", type=float, default=0.95, help="URLLC delay-decay factor.")
+    parser.add_argument("--beta-u", type=float, default=5.0, help="URLLC timeout penalty.")
+    parser.add_argument("--beta-e", type=float, default=3.0, help="eMBB timeout penalty.")
+    parser.add_argument("--beta-m", type=float, default=1.0, help="mMTC timeout penalty.")
     parser.add_argument("--lambda-power", type=float, default=0.02, help="Training power regularizer.")
     parser.add_argument(
         "--lambda-interference",
@@ -1018,10 +1034,21 @@ def main() -> None:
     weight_sum = args.wu + args.we + args.wm
     if abs(weight_sum - 1.0) > 1e-9:
         raise SystemExit("Weights must sum to 1.")
+    if not (0.0 < args.alpha_u < 1.0):
+        raise SystemExit("--alpha-u must lie in (0, 1).")
+    if min(args.beta_u, args.beta_e, args.beta_m) <= 0.0:
+        raise SystemExit("--beta-u/--beta-e/--beta-m must be positive.")
     if args.episodes <= 0:
         raise SystemExit("--episodes must be positive.")
     if args.eval_every <= 0 or args.eval_episodes <= 0:
         raise SystemExit("--eval-every and --eval-episodes must be positive.")
+
+    configure_slice_configs(
+        alpha_u=args.alpha_u,
+        beta_u=args.beta_u,
+        beta_e=args.beta_e,
+        beta_m=args.beta_m,
+    )
 
     rng = np.random.default_rng(args.seed)
     data = load_q3_data()
@@ -1067,6 +1094,12 @@ def main() -> None:
             "actor_lr": args.actor_lr,
             "critic_lr": args.critic_lr,
             "weights": {"u": args.wu, "e": args.we, "m": args.wm},
+            "calibration": {
+                "alpha_u": args.alpha_u,
+                "beta_u": args.beta_u,
+                "beta_e": args.beta_e,
+                "beta_m": args.beta_m,
+            },
             "lambda_power": args.lambda_power,
             "lambda_interference": args.lambda_interference,
             "lambda_fairness": args.lambda_fairness,

@@ -119,6 +119,18 @@ SLICE_CONFIGS: Dict[str, SliceConfig] = {
 }
 
 
+def configure_slice_configs(alpha_u: float, beta_u: float, beta_e: float, beta_m: float) -> None:
+    """Apply benchmark-calibration constants without changing slice semantics."""
+    SLICE_CONFIGS.clear()
+    SLICE_CONFIGS.update(
+        {
+            "u": SliceConfig("URLLC", "U", 10, 10.0, 5, beta_u, alpha=alpha_u),
+            "e": SliceConfig("eMBB", "e", 5, 50.0, 100, beta_e),
+            "m": SliceConfig("mMTC", "m", 2, 1.0, 500, beta_m),
+        }
+    )
+
+
 def col_idx_to_name(idx: int) -> str:
     name = ""
     while idx:
@@ -554,6 +566,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--we", type=float, default=1.0 / 3.0, help="eMBB weight.")
     parser.add_argument("--wm", type=float, default=1.0 / 3.0, help="mMTC weight.")
     parser.add_argument("--gamma", type=float, default=1.0, help="Optional window discount factor.")
+    parser.add_argument("--alpha-u", type=float, default=0.95, help="URLLC delay-decay factor.")
+    parser.add_argument("--beta-u", type=float, default=5.0, help="URLLC timeout penalty.")
+    parser.add_argument("--beta-e", type=float, default=3.0, help="eMBB timeout penalty.")
+    parser.add_argument("--beta-m", type=float, default=1.0, help="mMTC timeout penalty.")
     parser.add_argument(
         "--json-out",
         type=Path,
@@ -609,6 +625,17 @@ def main() -> None:
         raise SystemExit("Weights must sum to 1.")
     if args.gamma <= 0.0:
         raise SystemExit("--gamma must be positive.")
+    if not (0.0 < args.alpha_u < 1.0):
+        raise SystemExit("--alpha-u must lie in (0, 1).")
+    if min(args.beta_u, args.beta_e, args.beta_m) <= 0.0:
+        raise SystemExit("--beta-u/--beta-e/--beta-m must be positive.")
+
+    configure_slice_configs(
+        alpha_u=args.alpha_u,
+        beta_u=args.beta_u,
+        beta_e=args.beta_e,
+        beta_m=args.beta_m,
+    )
 
     started = time.perf_counter()
     data = load_q2_data(args.data_path)
@@ -619,12 +646,28 @@ def main() -> None:
     )
     records, stats = planner.solve(lookahead=args.lookahead)
     summary = summarize(records, stats, data)
+    summary["config"] = {
+        "lookahead": args.lookahead,
+        "gamma": args.gamma,
+        "weights": {"u": args.wu, "e": args.we, "m": args.wm},
+        "calibration": {
+            "alpha_u": args.alpha_u,
+            "beta_u": args.beta_u,
+            "beta_e": args.beta_e,
+            "beta_m": args.beta_m,
+        },
+    }
     elapsed = time.perf_counter() - started
 
     print("Q2 rolling DP/MPC results")
     print(f"data={args.data_path}")
     print(f"lookahead={args.lookahead}  gamma={args.gamma:.4f}")
     print(f"weights=(wu={args.wu:.4f}, we={args.we:.4f}, wm={args.wm:.4f})")
+    print(
+        "calibration="
+        f"(alpha_u={args.alpha_u:.4f}, beta_u={args.beta_u:.4f}, "
+        f"beta_e={args.beta_e:.4f}, beta_m={args.beta_m:.4f})"
+    )
     print("terminal_policy=unfinished tasks at 1000 ms are penalized as terminal drops")
     print()
     print("Decision trajectory")

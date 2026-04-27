@@ -38,6 +38,7 @@ from q3_hierarchical_rl import (
     SLICE_KEYS,
     MultiBSQ3Env,
     build_slice_action_space,
+    configure_slice_configs,
     load_q3_data,
 )
 
@@ -484,6 +485,12 @@ def train_slice(args: argparse.Namespace) -> dict:
             "init_model": str(args.init_model) if args.init_model else None,
             "reset_num_timesteps": args.reset_num_timesteps,
             "weights": weights,
+            "calibration": {
+                "alpha_u": args.alpha_u,
+                "beta_u": args.beta_u,
+                "beta_e": args.beta_e,
+                "beta_m": args.beta_m,
+            },
         },
         "training_history": callback.episode_history,
         "evaluation_history": callback.evaluation_history,
@@ -542,6 +549,12 @@ def train_power(args: argparse.Namespace) -> dict:
             "init_model": str(args.init_model) if args.init_model else None,
             "reset_num_timesteps": args.reset_num_timesteps,
             "weights": weights,
+            "calibration": {
+                "alpha_u": args.alpha_u,
+                "beta_u": args.beta_u,
+                "beta_e": args.beta_e,
+                "beta_m": args.beta_m,
+            },
         },
         "training_history": callback.episode_history,
         "evaluation_history": callback.evaluation_history,
@@ -566,6 +579,15 @@ def evaluate_combined(args: argparse.Namespace) -> dict:
         "slice_mode": args.slice_mode,
         "slice_model_in": str(args.slice_model_in) if args.slice_model_in else None,
         "power_model_in": str(args.power_model_in),
+        "config": {
+            "weights": weights,
+            "calibration": {
+                "alpha_u": args.alpha_u,
+                "beta_u": args.beta_u,
+                "beta_e": args.beta_e,
+                "beta_m": args.beta_m,
+            },
+        },
         "evaluation": evaluate_power_model(args.power_model_in, planner, env_kwargs, episodes=args.eval_episodes),
     }
 
@@ -586,6 +608,10 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--wu", type=float, default=1.0 / 3.0)
     parser.add_argument("--we", type=float, default=1.0 / 3.0)
     parser.add_argument("--wm", type=float, default=1.0 / 3.0)
+    parser.add_argument("--alpha-u", type=float, default=0.95)
+    parser.add_argument("--beta-u", type=float, default=5.0)
+    parser.add_argument("--beta-e", type=float, default=3.0)
+    parser.add_argument("--beta-m", type=float, default=1.0)
     parser.add_argument("--lambda-power", type=float, default=0.02)
     parser.add_argument("--lambda-interference", type=float, default=0.05)
     parser.add_argument("--lambda-fairness", type=float, default=0.02)
@@ -644,8 +670,19 @@ def main() -> None:
     weight_sum = args.wu + args.we + args.wm
     if abs(weight_sum - 1.0) > 1e-9:
         raise SystemExit("Weights must sum to 1.")
+    if not (0.0 < args.alpha_u < 1.0):
+        raise SystemExit("--alpha-u must lie in (0, 1).")
+    if min(args.beta_u, args.beta_e, args.beta_m) <= 0.0:
+        raise SystemExit("--beta-u/--beta-e/--beta-m must be positive.")
     if args.total_timesteps <= 0:
         raise SystemExit("--total-timesteps must be positive.")
+
+    configure_slice_configs(
+        alpha_u=args.alpha_u,
+        beta_u=args.beta_u,
+        beta_e=args.beta_e,
+        beta_m=args.beta_m,
+    )
 
     if args.command == "train-slice":
         payload = train_slice(args)
