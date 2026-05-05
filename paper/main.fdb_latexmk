@@ -1,8 +1,8 @@
 # Fdb version 4
-["bibtex main"] 1777284450.54998 "main.aux" "main.bbl" "main" 1777284453.16808 0
+["bibtex main"] 1777785650.40058 "main.aux" "main.bbl" "main" 1777785650.44857 2
   "./references.bib" 1777254391.87541 2038 f2c81ea6a5422215278601730458dbdf ""
   "/usr/local/texlive/2026basic/texmf-dist/bibtex/bst/base/unsrt.bst" 1292289607 18030 1376b4b231b50c66211e47e42eda2875 ""
-  "main.aux" 1777284451.49658 7655 4eb0f1b4a100bffb18e969b39a21b8b0 "xelatex"
+  "main.aux" 1777785642.39777 32 3985256e7290058c681f74d7a3565a19 "xelatex"
   (generated)
   "main.bbl"
   "main.blg"
@@ -131,8 +131,8 @@
   "figures/q2_lookahead_tradeoff.png" 1777284230.23361 76849 520969307b98be6e5a94d638e435f90e ""
   "figures/q3_multiseed_summary.png" 1777284230.48838 77878 ffc6957f0f5414073bb5e3e04d4fbc13 ""
   "figures/q3_slice_seed17_convergence.png" 1777284230.49024 240242 e6a33efaa6ec7a1a11b4f282cccb31f1 ""
-  "main.aux" 1777284451.49658 7655 4eb0f1b4a100bffb18e969b39a21b8b0 "xelatex"
-  "main.bbl" 1777284450.5738 1401 60efd50b7ee5becac836836ea351dbdf "bibtex main"
+  "main.aux" 1777785642.39777 32 3985256e7290058c681f74d7a3565a19 "xelatex"
+  "main.bbl" 1777785650.44753 0 d41d8cd98f00b204e9800998ecf8427e "bibtex main"
   "main.out" 1777284451.49773 2489 bd135b4b6490e4238759b2cfd758a015 "xelatex"
   "main.tex" 1777284435.91027 31747 de0b940aa46ffdf9ff602bbf050429aa ""
   (generated)

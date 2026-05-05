@@ -1,0 +1,262 @@
+{
+  "objective": 0.9134422274193047,
+  "slice_mean_reward": {
+    "u": 0.9021825274271917,
+    "e": 0.8381441548309373,
+    "m": 1.0
+  },
+  "completed": {
+    "u": 216,
+    "e": 1931,
+    "m": 7010
+  },
+  "dropped": {
+    "u": 1,
+    "e": 25,
+    "m": 0
+  },
+  "terminal_drops": {
+    "u": 1,
+    "e": 25,
+    "m": 0
+  },
+  "average_delay_ms": {
+    "u": 2.485973272504854,
+    "e": 7.042630404832499,
+    "m": 15.795549084754601
+  },
+  "embb_average_service_rate_mbps": 45.09393459181406,
+  "total_arrivals": {
+    "u": 217,
+    "e": 1956,
+    "m": 7010
+  },
+  "utility_parameters": {
+    "alpha_u": 0.97,
+    "beta_u": 5.0,
+    "beta_e": 3.0,
+    "beta_m": 1.0
+  },
+  "actions": [
+    {
+      "step": 0,
+      "start_ms": 0,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.18827440108201518,
+      "realized_delta": 0.08753389282734292,
+      "queue_before": {
+        "u": 0,
+        "e": 0,
+        "m": 0
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 3,
+        "m": 235
+      }
+    },
+    {
+      "step": 1,
+      "start_ms": 100,
+      "action": [
+        0,
+        30,
+        20
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.1957557829506283,
+      "realized_delta": 0.10074050825467226,
+      "queue_before": {
+        "u": 0,
+        "e": 3,
+        "m": 235
+      },
+      "queue_after": {
+        "u": 1,
+        "e": 4,
+        "m": 0
+      }
+    },
+    {
+      "step": 2,
+      "start_ms": 200,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.196232110962847,
+      "realized_delta": 0.09068929447026111,
+      "queue_before": {
+        "u": 1,
+        "e": 4,
+        "m": 0
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 5,
+        "m": 228
+      }
+    },
+    {
+      "step": 3,
+      "start_ms": 300,
+      "action": [
+        0,
+        30,
+        20
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.19860675582231352,
+      "realized_delta": 0.1055428164925859,
+      "queue_before": {
+        "u": 0,
+        "e": 5,
+        "m": 228
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 8,
+        "m": 1
+      }
+    },
+    {
+      "step": 4,
+      "start_ms": 400,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.18041227005720245,
+      "realized_delta": 0.08697552123429268,
+      "queue_before": {
+        "u": 0,
+        "e": 8,
+        "m": 1
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 10,
+        "m": 226
+      }
+    },
+    {
+      "step": 5,
+      "start_ms": 500,
+      "action": [
+        0,
+        30,
+        20
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.18084991703044342,
+      "realized_delta": 0.09343674882290978,
+      "queue_before": {
+        "u": 0,
+        "e": 10,
+        "m": 226
+      },
+      "queue_after": {
+        "u": 1,
+        "e": 27,
+        "m": 0
+      }
+    },
+    {
+      "step": 6,
+      "start_ms": 600,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.18583771694069295,
+      "realized_delta": 0.0812680072755498,
+      "queue_before": {
+        "u": 1,
+        "e": 27,
+        "m": 0
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 32,
+        "m": 213
+      }
+    },
+    {
+      "step": 7,
+      "start_ms": 700,
+      "action": [
+        0,
+        30,
+        20
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.19432343341416614,
+      "realized_delta": 0.10456970966514315,
+      "queue_before": {
+        "u": 0,
+        "e": 32,
+        "m": 213
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 11,
+        "m": 1
+      }
+    },
+    {
+      "step": 8,
+      "start_ms": 800,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.16268572837661902,
+      "realized_delta": 0.08794528535751209,
+      "queue_before": {
+        "u": 0,
+        "e": 11,
+        "m": 1
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 7,
+        "m": 221
+      }
+    },
+    {
+      "step": 9,
+      "start_ms": 900,
+      "action": [
+        0,
+        30,
+        20
+      ],
+      "lookahead_depth": 1,
+      "projected_value": 0.07474044301910693,
+      "realized_delta": 0.09520212066463576,
+      "queue_before": {
+        "u": 0,
+        "e": 7,
+        "m": 221
+      },
+      "queue_after": {
+        "u": 1,
+        "e": 25,
+        "m": 0
+      }
+    }
+  ]
+}

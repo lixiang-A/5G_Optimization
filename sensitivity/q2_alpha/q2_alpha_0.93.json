@@ -1,0 +1,262 @@
+{
+  "objective": 0.8831401336264766,
+  "slice_mean_reward": {
+    "u": 0.8538852395339911,
+    "e": 0.7955351613456477,
+    "m": 1.0
+  },
+  "completed": {
+    "u": 216,
+    "e": 1910,
+    "m": 7010
+  },
+  "dropped": {
+    "u": 1,
+    "e": 46,
+    "m": 0
+  },
+  "terminal_drops": {
+    "u": 1,
+    "e": 46,
+    "m": 0
+  },
+  "average_delay_ms": {
+    "u": 1.9304331547598739,
+    "e": 18.74892703297923,
+    "m": 27.44363391675294
+  },
+  "embb_average_service_rate_mbps": 45.01912150176842,
+  "total_arrivals": {
+    "u": 217,
+    "e": 1956,
+    "m": 7010
+  },
+  "utility_parameters": {
+    "alpha_u": 0.93,
+    "beta_u": 5.0,
+    "beta_e": 3.0,
+    "beta_m": 1.0
+  },
+  "actions": [
+    {
+      "step": 0,
+      "start_ms": 0,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.18676661675873107,
+      "realized_delta": 0.0872457397534382,
+      "queue_before": {
+        "u": 0,
+        "e": 0,
+        "m": 0
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 3,
+        "m": 235
+      }
+    },
+    {
+      "step": 1,
+      "start_ms": 100,
+      "action": [
+        10,
+        20,
+        20
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.19117004099209828,
+      "realized_delta": 0.09952087700529287,
+      "queue_before": {
+        "u": 0,
+        "e": 3,
+        "m": 235
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 49,
+        "m": 0
+      }
+    },
+    {
+      "step": 2,
+      "start_ms": 200,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.19130939953012305,
+      "realized_delta": 0.09005278501346699,
+      "queue_before": {
+        "u": 0,
+        "e": 49,
+        "m": 0
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 42,
+        "m": 228
+      }
+    },
+    {
+      "step": 3,
+      "start_ms": 300,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.19020518358737554,
+      "realized_delta": 0.08995727112263417,
+      "queue_before": {
+        "u": 0,
+        "e": 42,
+        "m": 228
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 35,
+        "m": 461
+      }
+    },
+    {
+      "step": 4,
+      "start_ms": 400,
+      "action": [
+        0,
+        30,
+        20
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.18942096039262257,
+      "realized_delta": 0.10024791246474136,
+      "queue_before": {
+        "u": 0,
+        "e": 35,
+        "m": 461
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 32,
+        "m": 202
+      }
+    },
+    {
+      "step": 5,
+      "start_ms": 500,
+      "action": [
+        0,
+        30,
+        20
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.1720606197527529,
+      "realized_delta": 0.08917304792788121,
+      "queue_before": {
+        "u": 0,
+        "e": 32,
+        "m": 202
+      },
+      "queue_after": {
+        "u": 1,
+        "e": 47,
+        "m": 0
+      }
+    },
+    {
+      "step": 6,
+      "start_ms": 600,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.18011825067625675,
+      "realized_delta": 0.08124626589647413,
+      "queue_before": {
+        "u": 1,
+        "e": 47,
+        "m": 0
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 50,
+        "m": 213
+      }
+    },
+    {
+      "step": 7,
+      "start_ms": 700,
+      "action": [
+        10,
+        30,
+        10
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.1885811411031359,
+      "realized_delta": 0.0885294779698238,
+      "queue_before": {
+        "u": 0,
+        "e": 50,
+        "m": 213
+      },
+      "queue_after": {
+        "u": 0,
+        "e": 32,
+        "m": 420
+      }
+    },
+    {
+      "step": 8,
+      "start_ms": 800,
+      "action": [
+        0,
+        30,
+        20
+      ],
+      "lookahead_depth": 2,
+      "projected_value": 0.1571667564727938,
+      "realized_delta": 0.09758012680634114,
+      "queue_before": {
+        "u": 0,
+        "e": 32,
+        "m": 420
+      },
+      "queue_after": {
+        "u": 3,
+        "e": 24,
+        "m": 164
+      }
+    },
+    {
+      "step": 9,
+      "start_ms": 900,
+      "action": [
+        0,
+        30,
+        20
+      ],
+      "lookahead_depth": 1,
+      "projected_value": 0.05958662966645266,
+      "realized_delta": 0.09078450363099994,
+      "queue_before": {
+        "u": 3,
+        "e": 24,
+        "m": 164
+      },
+      "queue_after": {
+        "u": 1,
+        "e": 46,
+        "m": 0
+      }
+    }
+  ]
+}

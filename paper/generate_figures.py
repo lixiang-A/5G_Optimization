@@ -4,6 +4,8 @@ import json
 import shutil
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
@@ -175,6 +177,61 @@ def draw_q3_summary() -> None:
     save(fig, "q3_multiseed_summary.png")
 
 
+def draw_sensitivity_summary() -> None:
+    q2_alpha_paths = [
+        ("0.90", "sensitivity/q2_alpha/q2_alpha_0.90.json"),
+        ("0.93", "sensitivity/q2_alpha/q2_alpha_0.93.json"),
+        ("0.95", "sensitivity/q2_alpha/q2_alpha_0.95.json"),
+        ("0.97", "sensitivity/q2_alpha/q2_alpha_0.97.json"),
+    ]
+    q2_beta_paths = [
+        ("(4,2,1)", "sensitivity/q2_beta/q2_beta_421.json"),
+        ("(5,3,1)", "sensitivity/q2_beta/q2_beta_531.json"),
+        ("(6,4,2)", "sensitivity/q2_beta/q2_beta_642.json"),
+    ]
+    q3_alpha_paths = [
+        ("0.90", "sensitivity/q3_alpha/q3_eval_alpha_0.90.json"),
+        ("0.93", "sensitivity/q3_alpha/q3_eval_alpha_0.93.json"),
+        ("0.95", "sensitivity/q3_alpha/q3_eval_alpha_0.95.json"),
+        ("0.97", "sensitivity/q3_alpha/q3_eval_alpha_0.97.json"),
+    ]
+    q3_beta_paths = [
+        ("(4,2,1)", "sensitivity/q3_beta/q3_eval_b421.json"),
+        ("(5,3,1)", "sensitivity/q3_beta/q3_eval_b531.json"),
+        ("(6,4,2)", "sensitivity/q3_beta/q3_eval_b642.json"),
+    ]
+
+    def q2_objectives(paths: list[tuple[str, str]]) -> list[float]:
+        return [load_json(path)["objective"] for _, path in paths]
+
+    def q3_objectives(paths: list[tuple[str, str]]) -> list[float]:
+        return [load_json(path)["evaluation"]["summary"]["objective"] for _, path in paths]
+
+    panels = [
+        ("Q2 alpha_u", q2_alpha_paths, q2_objectives(q2_alpha_paths), "#2563eb"),
+        ("Q2 beta", q2_beta_paths, q2_objectives(q2_beta_paths), "#f97316"),
+        ("Q3 alpha_u", q3_alpha_paths, q3_objectives(q3_alpha_paths), "#16a34a"),
+        ("Q3 beta", q3_beta_paths, q3_objectives(q3_beta_paths), "#dc2626"),
+    ]
+
+    fig, axes = plt.subplots(2, 2, figsize=(10.5, 6.4))
+    for ax, (title, paths, values, color) in zip(axes.ravel(), panels):
+        labels = [label for label, _ in paths]
+        ax.plot(labels, values, marker="o", linewidth=2.0, color=color)
+        ax.set_title(title)
+        ax.set_ylabel("Objective")
+        ax.grid(alpha=0.25)
+        ax.margins(x=0.08)
+        ymin = min(values) - 0.015
+        ymax = max(values) + 0.015
+        ax.set_ylim(ymin, ymax)
+        for idx, value in enumerate(values):
+            ax.text(idx, value + 0.004, f"{value:.3f}", ha="center", fontsize=9)
+
+    fig.tight_layout()
+    save(fig, "sensitivity_objectives.png")
+
+
 def copy_training_curve() -> None:
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(
@@ -190,4 +247,5 @@ if __name__ == "__main__":
     draw_q2_tradeoff()
     draw_q2_actions()
     draw_q3_summary()
+    draw_sensitivity_summary()
     copy_training_curve()
