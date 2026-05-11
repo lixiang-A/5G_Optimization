@@ -44,6 +44,24 @@ from q3_hierarchical_rl import (
 
 OUTPUT_DIR = ROOT / "outputs" / "q3_sb3"
 
+# Discretized power levels for single-level (joint) PPO baseline.
+# Each BS picks one of these power levels applied uniformly to all its slices.
+JOINT_POWER_LEVELS_DBM = (15.0, 22.5, 30.0)
+N_JOINT_POWER_LEVELS = len(JOINT_POWER_LEVELS_DBM)
+
+
+def build_joint_action_space() -> tuple[List[tuple[int, int, int]], List[float], int]:
+    """Build combined (RB allocation × power level) joint action space.
+
+    Returns:
+        rb_actions: list of (x_u, x_e, x_m) tuples
+        power_levels: list of power values in dBm
+        n_joint_per_bs: total number of joint actions per BS (= len(rb_actions) * len(power_levels))
+    """
+    rb_actions = build_slice_action_space()
+    power_levels = list(JOINT_POWER_LEVELS_DBM)
+    return rb_actions, power_levels, len(rb_actions) * len(power_levels)
+
 
 def normalize_slice_allocations(action_ids: np.ndarray, action_space: List[tuple[int, int, int]]) -> np.ndarray:
     allocations = np.asarray([action_space[int(idx)] for idx in action_ids], dtype=np.float32)
@@ -212,6 +230,127 @@ class Q3PowerEnv(gym.Env[np.ndarray, np.ndarray]):
             return self._power_obs(), float(reward), True, False, info
         self.current_slice_action_ids = self.slice_planner.select(self.core_env)
         return self._power_obs(), float(reward), False, False, info
+
+
+class Q3JointEnv(gym.Env[np.ndarray, np.ndarray]):
+    """Single-level (non-hierarchical) joint PPO baseline environment.
+
+    Each BS selects a joint action that simultaneously determines:
+      - RB budget allocation (discrete, from the slice action space)
+      - transmit power level (discretized to JOINT_POWER_LEVELS_DBM)
+
+    The action space is MultiDiscrete([N_joint, N_joint, N_joint]) where
+    N_joint = N_rb_actions × N_power_levels.
+    Power is applied uniformly to all slices within each BS.
+    """
+
+    metadata = {"render_modes": []}
+
+    def __init__(
+        self,
+        weights: Dict[str, float],
+        lambda_power: float,
+        lambda_interference: float,
+        lambda_fairness: float,
+    ) -> None:
+        super().__init__()
+        self.data = load_q3_data()
+        self.core_env = MultiBSQ3Env(
+            data=self.data,
+            weights=weights,
+            lambda_power=lambda_power,
+            lambda_interference=lambda_interference,
+            lambda_fairness=lambda_fairness,
+        )
+        self.rb_actions, self.power_levels, self.n_joint = build_joint_action_space()
+        self.n_rb = len(self.rb_actions)
+        self.n_power = len(self.power_levels)
+        self.action_space = spaces.MultiDiscrete([self.n_joint] * len(BS_NAMES))
+        self.observation_space = spaces.Box(
+            low=-10.0,
+            high=10.0,
+            shape=(self.core_env.global_obs_dim,),
+            dtype=np.float32,
+        )
+
+    def _decode_action(self, joint_ids: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Decode joint action indices into RB action indices and power values."""
+        rb_ids = joint_ids // self.n_power
+        power_level_indices = joint_ids % self.n_power
+        powers_dbm = np.array(
+            [[self.power_levels[int(p_idx)]] * len(SLICE_KEYS) for p_idx in power_level_indices],
+            dtype=np.float64,
+        )
+        return rb_ids.astype(np.int64), powers_dbm
+
+    def reset(self, *, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
+        super().reset(seed=seed)
+        obs = self.core_env.reset().astype(np.float32)
+        return obs, {}
+
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:
+        action = np.asarray(action, dtype=np.int64)
+        rb_ids, powers_dbm = self._decode_action(action)
+        obs, reward, done, info = self.core_env.step(rb_ids, powers_dbm)
+        info = dict(info)
+        if done:
+            info["episode_summary"] = self.core_env.summarize()
+        return obs.astype(np.float32), float(reward), done, False, info
+
+
+def evaluate_uniform_baseline(
+    weights: Dict[str, float],
+    lambda_power: float = 0.02,
+    lambda_interference: float = 0.05,
+    lambda_fairness: float = 0.02,
+    episodes: int = 3,
+) -> dict:
+    """Evaluate the uniform-RB + fixed-30dBm heuristic baseline on Q3.
+
+    Uniform allocation: the valid RB split closest to equal thirds (17/17/16 rounded
+    to granularity constraints), applied identically to all BSs.  Power is fixed at
+    30 dBm for all BSs and slices.
+    """
+    rb_actions = build_slice_action_space()
+    # Find the action closest to uniform (50/3 ≈ 16.67 each)
+    uniform_target = np.array([50.0 / 3.0] * 3)
+    best_rb_idx = 0
+    best_dist = float("inf")
+    for idx, alloc in enumerate(rb_actions):
+        dist = float(np.square(np.asarray(alloc, dtype=np.float64) - uniform_target).sum())
+        if dist < best_dist:
+            best_dist = dist
+            best_rb_idx = idx
+
+    episode_summaries = []
+    for ep in range(episodes):
+        data = load_q3_data()
+        env = MultiBSQ3Env(
+            data=data,
+            weights=weights,
+            lambda_power=lambda_power,
+            lambda_interference=lambda_interference,
+            lambda_fairness=lambda_fairness,
+        )
+        env.reset()
+        done = False
+        while not done:
+            action_ids = np.full(len(BS_NAMES), best_rb_idx, dtype=np.int64)
+            powers = np.full((len(BS_NAMES), len(SLICE_KEYS)), 30.0, dtype=np.float64)
+            _, _, done, _ = env.step(action_ids, powers)
+        episode_summaries.append(env.summarize())
+
+    objectives = [s["objective"] for s in episode_summaries]
+    return {
+        "method": "uniform_rb_fixed_power",
+        "rb_allocation": list(rb_actions[best_rb_idx]),
+        "power_dbm": 30.0,
+        "episodes": episodes,
+        "objectives": objectives,
+        "mean_objective": float(np.mean(objectives)),
+        "std_objective": float(np.std(objectives)) if episodes > 1 else 0.0,
+        "last_episode_summary": episode_summaries[-1],
+    }
 
 
 def build_common_ppo_kwargs(args: argparse.Namespace) -> dict:
@@ -592,6 +731,150 @@ def evaluate_combined(args: argparse.Namespace) -> dict:
     }
 
 
+# ── joint (single-level) PPO baseline ──────────────────────────────────────
+
+
+def train_joint(args: argparse.Namespace) -> dict:
+    """Train a single-level joint PPO on Q3JointEnv (RB + discretized power)."""
+    weights = {"u": args.wu, "e": args.we, "m": args.wm}
+    env_kwargs = {
+        "weights": weights,
+        "lambda_power": args.lambda_power,
+        "lambda_interference": args.lambda_interference,
+        "lambda_fairness": args.lambda_fairness,
+    }
+
+    def _make_env():
+        return Monitor(Q3JointEnv(**env_kwargs))
+
+    env = _make_env()
+    callback = TrainingCurveCallback(
+        eval_env_factory=_make_env,
+        eval_freq=args.eval_freq,
+        eval_episodes=args.eval_episodes,
+    )
+    model = build_or_load_model(args, env)
+    model.learn(
+        total_timesteps=args.total_timesteps,
+        progress_bar=False,
+        callback=callback,
+        reset_num_timesteps=args.reset_num_timesteps,
+    )
+    args.model_out.parent.mkdir(parents=True, exist_ok=True)
+    model.save(args.model_out)
+
+    eval_env = _make_env()
+    rollout = run_deterministic_episode(model, eval_env)
+    eval_env.close()
+    plot_out = args.plot_out or args.model_out.with_name(f"{args.model_out.stem}_curves.png")
+    save_training_curve_plot(
+        callback.episode_history,
+        callback.evaluation_history,
+        plot_out,
+        title="Q3 Joint PPO",
+    )
+    return {
+        "mode": "joint",
+        "model_out": str(args.model_out),
+        "plot_out": str(plot_out),
+        "config": {
+            "total_timesteps": args.total_timesteps,
+            "init_model": str(args.init_model) if args.init_model else None,
+            "reset_num_timesteps": args.reset_num_timesteps,
+            "weights": weights,
+            "joint_power_levels_dbm": list(JOINT_POWER_LEVELS_DBM),
+            "calibration": {
+                "alpha_u": args.alpha_u,
+                "beta_u": args.beta_u,
+                "beta_e": args.beta_e,
+                "beta_m": args.beta_m,
+            },
+        },
+        "training_history": callback.episode_history,
+        "evaluation_history": callback.evaluation_history,
+        "evaluation": {
+            "episode_reward": rollout["episode_reward"],
+            "summary": rollout["summary"],
+        },
+    }
+
+
+def evaluate_joint(args: argparse.Namespace) -> dict:
+    """Evaluate a trained single-level joint PPO model."""
+    weights = {"u": args.wu, "e": args.we, "m": args.wm}
+    env_kwargs = {
+        "weights": weights,
+        "lambda_power": args.lambda_power,
+        "lambda_interference": args.lambda_interference,
+        "lambda_fairness": args.lambda_fairness,
+    }
+    if args.joint_model_in is None:
+        raise SystemExit("--joint-model-in is required for evaluate-joint.")
+    env = Monitor(Q3JointEnv(**env_kwargs))
+    model = PPO.load(args.joint_model_in)
+    rollout = run_deterministic_episode(model, env)
+    env.close()
+    return {
+        "mode": "evaluate-joint",
+        "joint_model_in": str(args.joint_model_in),
+        "config": {
+            "weights": weights,
+            "joint_power_levels_dbm": list(JOINT_POWER_LEVELS_DBM),
+            "calibration": {
+                "alpha_u": args.alpha_u,
+                "beta_u": args.beta_u,
+                "beta_e": args.beta_e,
+                "beta_m": args.beta_m,
+            },
+        },
+        "evaluation": {
+            "episode_reward": rollout["episode_reward"],
+            "summary": rollout["summary"],
+        },
+    }
+
+
+def evaluate_uniform(args: argparse.Namespace) -> dict:
+    """Evaluate the uniform-RB + fixed-30dBm non-learning heuristic."""
+    weights = {"u": args.wu, "e": args.we, "m": args.wm}
+    return evaluate_uniform_baseline(
+        weights=weights,
+        lambda_power=args.lambda_power,
+        lambda_interference=args.lambda_interference,
+        lambda_fairness=args.lambda_fairness,
+        episodes=args.eval_episodes,
+    )
+
+
+def evaluate_slice_only(args: argparse.Namespace) -> dict:
+    """Evaluate a trained slice model with fixed power (ablates power layer)."""
+    weights = {"u": args.wu, "e": args.we, "m": args.wm}
+    env_kwargs = {
+        "fixed_power_dbm": args.fixed_power_dbm,
+        "weights": weights,
+        "lambda_power": args.lambda_power,
+        "lambda_interference": args.lambda_interference,
+        "lambda_fairness": args.lambda_fairness,
+    }
+    if args.slice_model_in is None:
+        raise SystemExit("--slice-model-in is required for evaluate-slice-only.")
+    return {
+        "mode": "evaluate-slice-only",
+        "slice_model_in": str(args.slice_model_in),
+        "fixed_power_dbm": args.fixed_power_dbm,
+        "config": {
+            "weights": weights,
+            "calibration": {
+                "alpha_u": args.alpha_u,
+                "beta_u": args.beta_u,
+                "beta_e": args.beta_e,
+                "beta_m": args.beta_m,
+            },
+        },
+        "evaluation": evaluate_slice_model(args.slice_model_in, env_kwargs, episodes=args.eval_episodes),
+    }
+
+
 def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--total-timesteps", type=int, default=5000)
@@ -662,6 +945,49 @@ def parse_args() -> argparse.Namespace:
     eval_parser.add_argument("--slice-model-in", type=Path, default=OUTPUT_DIR / "q3_slice_ppo.zip")
     eval_parser.add_argument("--power-model-in", type=Path, default=OUTPUT_DIR / "q3_power_ppo.zip")
 
+    # ── uniform baseline ──
+    uniform_parser = subparsers.add_parser(
+        "evaluate-uniform",
+        help="Evaluate uniform-RB + fixed-30dBm non-learning heuristic.",
+    )
+    add_common_args(uniform_parser)
+
+    # ── joint (single-level) PPO baseline ──
+    joint_train_parser = subparsers.add_parser(
+        "train-joint",
+        help="Train a single-level joint PPO (RB + discretized power) baseline.",
+    )
+    add_common_args(joint_train_parser)
+    joint_train_parser.add_argument(
+        "--model-out",
+        type=Path,
+        default=OUTPUT_DIR / "q3_joint_ppo.zip",
+    )
+
+    joint_eval_parser = subparsers.add_parser(
+        "evaluate-joint",
+        help="Evaluate a trained single-level joint PPO model.",
+    )
+    add_common_args(joint_eval_parser)
+    joint_eval_parser.add_argument(
+        "--joint-model-in",
+        type=Path,
+        default=OUTPUT_DIR / "q3_joint_ppo.zip",
+    )
+
+    # ── slice-only ablation (fixed power, no power layer) ──
+    slice_only_parser = subparsers.add_parser(
+        "evaluate-slice-only",
+        help="Evaluate slice model with fixed power (ablates power layer).",
+    )
+    add_common_args(slice_only_parser)
+    slice_only_parser.add_argument("--fixed-power-dbm", type=float, default=30.0)
+    slice_only_parser.add_argument(
+        "--slice-model-in",
+        type=Path,
+        default=OUTPUT_DIR / "q3_slice_ppo.zip",
+    )
+
     return parser.parse_args()
 
 
@@ -688,8 +1014,18 @@ def main() -> None:
         payload = train_slice(args)
     elif args.command == "train-power":
         payload = train_power(args)
-    else:
+    elif args.command == "evaluate":
         payload = evaluate_combined(args)
+    elif args.command == "evaluate-uniform":
+        payload = evaluate_uniform(args)
+    elif args.command == "train-joint":
+        payload = train_joint(args)
+    elif args.command == "evaluate-joint":
+        payload = evaluate_joint(args)
+    elif args.command == "evaluate-slice-only":
+        payload = evaluate_slice_only(args)
+    else:
+        raise SystemExit(f"Unknown command: {args.command}")
 
     if args.metrics_out is not None:
         args.metrics_out.parent.mkdir(parents=True, exist_ok=True)

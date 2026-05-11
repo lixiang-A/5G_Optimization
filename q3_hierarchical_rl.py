@@ -133,6 +133,9 @@ class EpisodeStats:
     objective_value: float = 0.0
     completed: Dict[str, int] = field(default_factory=lambda: {key: 0 for key in SLICE_KEYS})
     dropped: Dict[str, int] = field(default_factory=lambda: {key: 0 for key in SLICE_KEYS})
+    normal_deadline_drops: Dict[str, int] = field(default_factory=lambda: {key: 0 for key in SLICE_KEYS})
+    terminal_backlog_drops: Dict[str, int] = field(default_factory=lambda: {key: 0 for key in SLICE_KEYS})
+    final_queue_length_by_slice: Dict[str, int] = field(default_factory=lambda: {key: 0 for key in SLICE_KEYS})
     delay_sum_ms: Dict[str, float] = field(default_factory=lambda: {key: 0.0 for key in SLICE_KEYS})
     reward_sum: Dict[str, float] = field(default_factory=lambda: {key: 0.0 for key in SLICE_KEYS})
     embb_rate_sum_mbps: float = 0.0
@@ -434,6 +437,10 @@ class MultiBSQ3Env:
             else:
                 proxy_score = -cfg.penalty
             self.stats.dropped[task.slice_key] += 1
+            if terminal_drop:
+                self.stats.terminal_backlog_drops[task.slice_key] += 1
+            else:
+                self.stats.normal_deadline_drops[task.slice_key] += 1
         elif task.slice_key == "u":
             official_score = cfg.alpha ** delay_ms
             proxy_score = sigmoid(self.kappa_u * (cfg.delay_sla_ms - delay_ms))
@@ -621,6 +628,7 @@ class MultiBSQ3Env:
         for bs_idx in range(len(BS_NAMES)):
             for slice_key in SLICE_KEYS:
                 queue = self.queues[bs_idx][slice_key]
+                self.stats.final_queue_length_by_slice[slice_key] += len(queue)
                 while queue:
                     task = queue.popleft()
                     self._resolve_task(task, float(TOTAL_MS), terminal_drop=True, window=window)
@@ -649,6 +657,10 @@ class MultiBSQ3Env:
         reward = self._window_reward(window)
         self.prev_action_ids = action_ids.astype(np.int64).copy()
         self.prev_powers = powers_dbm.copy()
+        dropped_in_window = {
+            key: window.resolved_counts[key] - window.success_counts[key]
+            for key in SLICE_KEYS
+        }
         decision_info = {
             "step": start_ms // DECISION_MS,
             "start_ms": start_ms,
@@ -657,6 +669,7 @@ class MultiBSQ3Env:
             "window_reward": reward,
             "resolved": window.resolved_counts.copy(),
             "completed": window.success_counts.copy(),
+            "dropped_in_window": dropped_in_window,
             "mean_proxy": {
                 key: (float(np.mean(window.proxy_scores[key])) if window.proxy_scores[key] else 0.0)
                 for key in SLICE_KEYS
@@ -688,6 +701,9 @@ class MultiBSQ3Env:
             "objective": self.stats.objective_value,
             "completed": self.stats.completed,
             "dropped": self.stats.dropped,
+            "normal_deadline_drops": self.stats.normal_deadline_drops,
+            "terminal_backlog_drops": self.stats.terminal_backlog_drops,
+            "final_queue_length_by_slice": self.stats.final_queue_length_by_slice,
             "average_delay_ms": avg_delay,
             "embb_average_service_rate_mbps": embb_rate,
             "mean_power_w": (
